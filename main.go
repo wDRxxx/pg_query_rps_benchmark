@@ -1,9 +1,28 @@
 package main
 
 import (
-	"fmt"
+	"context"
+	"log"
+	"sync"
 )
 
 func main() {
-	fmt.Println("postgresql benchmark")
+	ctx := context.Background()
+	var wg sync.WaitGroup
+	config := NewConfig()
+
+	db, err := NewPostgreSQL(ctx, config.DSN())
+	defer db.Close()
+
+	if err != nil {
+		log.Fatal("Error creating new database: ", err)
+	}
+
+	benchmarkCtx, cancel := context.WithTimeout(ctx, config.Duration())
+	defer cancel()
+
+	bench := NewBenchmark(db, config.Query(), &wg)
+	result := bench.RunBenchmark(benchmarkCtx)
+
+	log.Println("Benchmark finished with result:", result)
 }
